@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source\SVM">
+      <UniqueIdentifier>{c0a5b67b-cb84-4a55-8e96-89fcacc9b998}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\SVM\Defines">
+      <UniqueIdentifier>{b797d344-18c0-4d29-ad2f-5aa7d35b6076}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\SVM\Handlers">
+      <UniqueIdentifier>{a1cce910-f87d-422b-9b58-20156ad824bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Memory">
+      <UniqueIdentifier>{3d6d7aed-724c-4598-954d-e1fe453778eb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Entry.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SVM\SVM.cpp">
+      <Filter>Source\SVM</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Utils.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SVM\Handlers\SVM_VMExit.cpp">
+      <Filter>Source\SVM\Handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SVM\Handlers\SVM_HandleMSRAccess.cpp">
+      <Filter>Source\SVM\Handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SVM\Handlers\SVM_HandleGenericVM.cpp">
+      <Filter>Source\SVM\Handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SVM\Handlers\SVM_HandleVMCall.cpp">
+      <Filter>Source\SVM\Handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Memory\Physical.cpp">
+      <Filter>Source\Memory</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Source\Global.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SVM\SVM.h">
+      <Filter>Source\SVM</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SVM\Defines\SVM_ControlArea.h">
+      <Filter>Source\SVM\Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SVM\Defines\SVM_NestedPaging.h">
+      <Filter>Source\SVM\Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SVM\Defines\SVM_Platform.h">
+      <Filter>Source\SVM\Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SVM\Defines\SVM_ProcessorData.h">
+      <Filter>Source\SVM\Defines</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Utils.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\SVM\Handlers\SVM_VMExit.h">
+      <Filter>Source\SVM\Handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Shared.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Memory\Physical.h">
+      <Filter>Source\Memory</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="Source\SVM\SVM_x64.asm">
+      <Filter>Source\SVM</Filter>
+    </MASM>
+  </ItemGroup>
+</Project>
