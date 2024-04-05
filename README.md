@@ -36,7 +36,7 @@ At the time of release, no popular anti-cheat has issues with this hypervisor ru
 - **Q:** Hypervisor loads fine, everything works, but after some time the system crashes!
 - **A:** System sleep/hibernation is not supported. Memory mapping is done only for the first 512 GB of physical memory. In theory, that should be fine, but in reality, certain drivers (most commonly overclocking tools, motherboard utilities) will attempt to access memory beyond this range. Since there is no mapping, a nested page fault will occur, causing a system crash. You can fix this by implementing an exit handler that will add memory mappings on the fly, or if you don't care about 1.4 GB of useless space, then you can map all the 512 PML4 entries in NPT at once.
 - **Q:** System crashes/reboots when I open a game with X anti-cheat!
-- **A:** Make sure NESTED_MODE is set to false in Globals.h, it should be true only if you are testing the HV inside of virtual machine like VMware.
+- **A:** Make sure NESTED_MODE is set to false in Global.h, it should be true only if you are testing the HV inside of virtual machine like VMware.
 - **Q:** Do you have anything less barebones then this?
 - **A:** I have [Sphinx project](https://youtu.be/ocdVPpKP110) already mentioned above. It also hides its memory, supports Intel VT-x, reading of guarded pages, proper TSC offsetting, CR3 resolving (for processes with trashed directory base), etc. I have no plans to publish it at the moment.
 
