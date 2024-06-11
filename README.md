@@ -25,8 +25,6 @@ Common timing attacks are ineffective against this hypervisor, as it does not ex
 At the time of release, no popular anti-cheat has issues with this hypervisor running.
 
 ## FAQ
-- **Q:** Will there be a version supporting Intel CPUs / Intel VT-x?
-- **A:** No, at least not public.
 - **Q:** Driver is returning unsuccessful status and the hypervisor is not loaded, why is that?
 - **A:** If virtualization is truly enabled in BIOS, then make sure Hyper-V is really disabled. It might be off in Windows Features dialog, but still running due to WSL, Docker, VBS/HVCI and similar. 
 - **Q:** Hypervisor loads just fine, but the moment I try to attach to a process, the system crashes!
@@ -36,7 +34,7 @@ At the time of release, no popular anti-cheat has issues with this hypervisor ru
 - **Q:** System crashes/reboots when I open a game with X anti-cheat!
 - **A:** Make sure NESTED_MODE is set to false in Global.h, it should be true only if you are testing the HV inside of virtual machine like VMware.
 - **Q:** Do you have anything less barebones then this?
-- **A:** I have [Sphinx project](https://youtu.be/ocdVPpKP110) already mentioned above. It also hides its memory, supports Intel VT-x, reading of guarded pages, proper TSC offsetting, CR3 resolving (for processes with trashed directory base), etc. I have no plans to publish it at the moment.
+- **A:** I have [Sphinx project](https://youtu.be/ocdVPpKP110). It hides its memory, supports Intel VT-x, reading/resolving of guarded pages, proper TSC offsetting, CR3 resolving (for processes with trashed directory base), etc. 
 
 ## Credits
 - [SimpleSvm](https://github.com/tandasat/SimpleSvm) by @tandasat
