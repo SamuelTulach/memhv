@@ -7,8 +7,6 @@
 ## About
 This project has a single goal: to be as minimal as possible while providing a hypercall API for reading/writing an address space of any (protected) process. It is a standalone Microsoft Windows kernel-mode driver that can be loaded either normally or through manual mapping.
 
-Some parts were copied from my [Sphinx project](https://youtu.be/ocdVPpKP110), so the codebase might contain some unused defines and headers.
-
 ![screenshot](assets/screenshot.png)
 
 ## Support
@@ -22,7 +20,7 @@ Some parts were copied from my [Sphinx project](https://youtu.be/ocdVPpKP110), s
 4. Enjoy hypercall API (see client folder)
 
 ## Detection vectors
-Common timing attacks are ineffective against this hypervisor, as it does not exit on CPUID or similar instructions typically used in such attacks. When manually mapping, code will be in unsigned memory, having all the usual vectors. However, this can be easily mitigated by adjusting the NPT to completely hide the hypervisor memory from the guest (**this is not implemented in this project, you have to do it yourself**).
+Common timing attacks are ineffective against this hypervisor, as it does not exit on CPUID or similar instructions typically used in such attacks. When manually mapping, code will be in a memory region which is not associated with any legitimate module, having all the usual vectors. However, this can be easily mitigated by adjusting the NPT to completely hide the hypervisor memory from the guest (**this is not implemented in this project, you have to do it yourself**).
 
 At the time of release, no popular anti-cheat has issues with this hypervisor running.
 
