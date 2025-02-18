@@ -15,7 +15,7 @@ namespace SVM
                 UINT64 EnableX2ApicMode : 1;    // [10]
                 UINT64 EnableXApicGlobal : 1;   // [11]
                 UINT64 ApicBase : 24;           // [12:35]
-            } Fields;
+            };
         };
     } APIC_BASE, * PAPIC_BASE;
 
@@ -26,72 +26,23 @@ namespace SVM
             UINT64 AsUInt64;
             struct
             {
-                UINT64 Valid : 1;               // [0]
-                UINT64 Write : 1;               // [1]
-                UINT64 User : 1;                // [2]
-                UINT64 WriteThrough : 1;        // [3]
-                UINT64 CacheDisable : 1;        // [4]
-                UINT64 Accessed : 1;            // [5]
-                UINT64 Reserved1 : 3;           // [6:8]
-                UINT64 Avl : 3;                 // [9:11]
-                UINT64 PageFrameNumber : 40;    // [12:51]
-                UINT64 Reserved2 : 11;          // [52:62]
-                UINT64 NoExecute : 1;           // [63]
-            } Fields;
+                UINT64 Present : 1;
+                UINT64 Write : 1;
+                UINT64 Supervisor : 1;
+                UINT64 WriteThrough : 1;
+                UINT64 CacheDisable : 1;
+                UINT64 Accessed : 1;
+                UINT64 Reserved1 : 3;
+                UINT64 Avl : 3;
+                UINT64 PageFrameNumber : 36;
+                UINT64 Reserved2 : 15;
+                UINT64 NoExecute : 1;
+            };
         };
     } PML4_ENTRY_4KB, * PPML4_ENTRY_4KB,
         PDP_ENTRY_4KB, * PPDP_ENTRY_4KB,
-        PD_ENTRY_4KB, * PPD_ENTRY_4KB;
+        PT_ENTRY_4KB, * PPT_ENTRY_4KB;
     static_assert(sizeof(PML4_ENTRY_4KB) == 8, "size mismatch");
-
-    typedef struct _PT_ENTRY_4KB
-    {
-        union
-        {
-            UINT64 AsUInt64;
-            struct
-            {
-                UINT64 Valid : 1;               // [0]
-                UINT64 Write : 1;               // [1]
-                UINT64 User : 1;                // [2]
-                UINT64 WriteThrough : 1;        // [3]
-                UINT64 CacheDisable : 1;        // [4]
-                UINT64 Accessed : 1;            // [5]
-                UINT64 Dirty : 1;               // [6]
-                UINT64 Pat : 1;                 // [7]
-                UINT64 Global : 1;              // [8]
-                UINT64 Avl : 3;                 // [9:11]
-                UINT64 PageFrameNumber : 40;    // [12:51]
-                UINT64 Reserved1 : 11;          // [52:62]
-                UINT64 NoExecute : 1;           // [63]
-            } Fields;
-        };
-    } PT_ENTRY_4KB, * PPT_ENTRY_4KB;
-    static_assert(sizeof(PT_ENTRY_4KB) == 8, "size mismatch");
-
-    typedef struct _PML4_ENTRY_2MB
-    {
-        union
-        {
-            UINT64 AsUInt64;
-            struct
-            {
-                UINT64 Valid : 1;               // [0]
-                UINT64 Write : 1;               // [1]
-                UINT64 User : 1;                // [2]
-                UINT64 WriteThrough : 1;        // [3]
-                UINT64 CacheDisable : 1;        // [4]
-                UINT64 Accessed : 1;            // [5]
-                UINT64 Reserved1 : 3;           // [6:8]
-                UINT64 Avl : 3;                 // [9:11]
-                UINT64 PageFrameNumber : 40;    // [12:51]
-                UINT64 Reserved2 : 11;          // [52:62]
-                UINT64 NoExecute : 1;           // [63]
-            } Fields;
-        };
-    } PML4_ENTRY_2MB, * PPML4_ENTRY_2MB,
-        PDP_ENTRY_2MB, * PPDP_ENTRY_2MB;
-    static_assert(sizeof(PML4_ENTRY_2MB) == 8, "PML4_ENTRY_2MB size mismatch");
 
     typedef struct _PD_ENTRY_2MB
     {
@@ -100,25 +51,123 @@ namespace SVM
             UINT64 AsUInt64;
             struct
             {
-                UINT64 Valid : 1;               // [0]
-                UINT64 Write : 1;               // [1]
-                UINT64 User : 1;                // [2]
-                UINT64 WriteThrough : 1;        // [3]
-                UINT64 CacheDisable : 1;        // [4]
-                UINT64 Accessed : 1;            // [5]
-                UINT64 Dirty : 1;               // [6]
-                UINT64 LargePage : 1;           // [7]
-                UINT64 Global : 1;              // [8]
-                UINT64 Avl : 3;                 // [9:11]
-                UINT64 Pat : 1;                 // [12]
-                UINT64 Reserved1 : 8;           // [13:20]
-                UINT64 PageFrameNumber : 31;    // [21:51]
-                UINT64 Reserved2 : 11;          // [52:62]
-                UINT64 NoExecute : 1;           // [63]
-            } Fields;
+                UINT64 Present : 1;
+                UINT64 Write : 1;
+                UINT64 Supervisor : 1;
+                UINT64 WriteThrough : 1;
+                UINT64 CacheDisable : 1;
+                UINT64 Accessed : 1;
+                UINT64 Dirty : 1;
+                UINT64 LargePage : 1;
+                UINT64 Global : 1;
+                UINT64 Avl : 3;
+                UINT64 Pat : 1;
+                UINT64 Reserved1 : 8;
+                UINT64 PageFrameNumber : 27;
+                UINT64 Reserved2 : 15;
+                UINT64 NoExecute : 1;
+            };
         };
     } PD_ENTRY_2MB, * PPD_ENTRY_2MB;
     static_assert(sizeof(PD_ENTRY_2MB) == 8, "PD_ENTRY_2MB size mismatch");
+
+    typedef union
+    {
+        struct
+        {
+            UINT64 Present : 1;
+            UINT64 Write : 1;
+            UINT64 Supervisor : 1;
+            UINT64 PageLevelWriteThrough : 1;
+            UINT64 PageLevelCacheDisable : 1;
+            UINT64 Accessed : 1;
+            UINT64 Reserved1 : 1;
+            UINT64 LargePage : 1;
+            UINT64 Ignored1 : 3;
+            UINT64 Restart : 1;
+            UINT64 PageFrameNumber : 36;
+            UINT64 Reserved2 : 4;
+            UINT64 Ignored2 : 11;
+            UINT64 ExecuteDisable : 1;
+        };
+
+        UINT64 AsUInt;
+    } PDE_4KB;
+    static_assert(sizeof(PDE_4KB) == 8, "PDE_4KB size mismatch");
+
+    typedef union _PDPTE_1GB
+    {
+        struct
+        {
+            UINT64 Present : 1;
+            UINT64 Write : 1;
+            UINT64 Supervisor : 1;
+            UINT64 PageLevelWriteThrough : 1;
+            UINT64 PageLevelCacheDisable : 1;
+            UINT64 Accessed : 1;
+            UINT64 Dirty : 1;
+            UINT64 LargePage : 1;
+            UINT64 Global : 1;
+            UINT64 Ignored1 : 2;
+            UINT64 Restart : 1;
+            UINT64 Pat : 1;
+            UINT64 Reserved1 : 17;
+            UINT64 PageFrameNumber : 18;
+            UINT64 Reserved2 : 4;
+            UINT64 Ignored2 : 7;
+            UINT64 ProtectionKey : 4;
+            UINT64 ExecuteDisable : 1;
+        };
+        UINT64 AsUInt;
+    } PDPTE_1GB;
+    static_assert(sizeof(PDPTE_1GB) == 8, "PDPTE_1GB size mismatch");
+
+    typedef union
+    {
+        struct
+        {
+            UINT64 Present : 1;
+            UINT64 Write : 1;
+            UINT64 Supervisor : 1;
+            UINT64 PageLevelWriteThrough : 1;
+            UINT64 PageLevelCacheDisable : 1;
+            UINT64 Accessed : 1;
+            UINT64 Reserved1 : 1;
+            UINT64 LargePage : 1;
+            UINT64 Ignored1 : 3;
+            UINT64 Restart : 1;
+            UINT64 PageFrameNumber : 36;
+            UINT64 Reserved2 : 4;
+            UINT64 Ignored2 : 11;
+            UINT64 ExecuteDisable : 1;
+        };
+
+        UINT64 AsUInt;
+    } PDPTE_2MB;
+    static_assert(sizeof(PDPTE_2MB) == 8, "PDPTE_2MB size mismatch");
+
+    typedef union _PML4E_64
+    {
+        struct
+        {
+            UINT64 Present : 1;
+            UINT64 Write : 1;
+            UINT64 Supervisor : 1;
+            UINT64 PageLevelWriteThrough : 1;
+            UINT64 PageLevelCacheDisable : 1;
+            UINT64 Accessed : 1;
+            UINT64 Reserved1 : 1;
+            UINT64 MustBeZero : 1;
+            UINT64 Ignored1 : 3;
+            UINT64 Restart : 1;
+            UINT64 PageFrameNumber : 36;
+            UINT64 Reserved2 : 4;
+            UINT64 Ignored2 : 11;
+            UINT64 ExecuteDisable : 1;
+        };
+        UINT64 AsUInt;
+    } PML4E_64;
+    static_assert(sizeof(PML4E_64) == 8, "PML4E_64 size mismatch");
 
 #include <pshpack1.h>
     typedef struct _DESCRIPTOR_TABLE_REGISTER

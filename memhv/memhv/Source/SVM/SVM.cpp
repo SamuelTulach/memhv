@@ -27,31 +27,122 @@ NTSTATUS SVM::CheckSupport()
 
 void SVM::BuildNestedPageTables(const PSHARED_VIRTUAL_PROCESSOR_DATA sharedData)
 {
-    const ULONG64 pdpBasePa = MmGetPhysicalAddress(&sharedData->PdpEntries).QuadPart;
-    sharedData->Pml4Entries[0].Fields.PageFrameNumber = pdpBasePa >> PAGE_SHIFT;
-    sharedData->Pml4Entries[0].Fields.Valid = 1;
-    sharedData->Pml4Entries[0].Fields.Write = 1;
-    sharedData->Pml4Entries[0].Fields.User = 1;
+    /*
+     * On real hardware, physical addresses above 512GB (not only first PML4) are being accessed
+     * for example due to above 4G encoding (REBAR) there will be accesses from 880GB-1000GB range.
+     *
+     * For this reason, we are using 1GB huge pages and map every single possible GPA to HPA 1:1.
+     */
+    sharedData->Pml4Entries = static_cast<PML4E_64*>(Utils::AllocatePageAligned(sizeof(PML4E_64) * 512));
+    sharedData->PdpEntries = static_cast<PDPTE_1GB(*)[512]>(Utils::AllocatePageAligned(sizeof(PDPTE_1GB) * 512 * 512));
 
-    for (ULONG64 pdpIndex = 0; pdpIndex < 512; pdpIndex++)
+    for (ULONG64 pml4Index = 0; pml4Index < 512; pml4Index++)
     {
-        const ULONG64 pdeBasePa = MmGetPhysicalAddress(&sharedData->PdeEntries[pdpIndex][0]).QuadPart;
-        sharedData->PdpEntries[pdpIndex].Fields.PageFrameNumber = pdeBasePa >> PAGE_SHIFT;
-        sharedData->PdpEntries[pdpIndex].Fields.Valid = 1;
-        sharedData->PdpEntries[pdpIndex].Fields.Write = 1;
-        sharedData->PdpEntries[pdpIndex].Fields.User = 1;
+        const ULONG64 pdpBasePa = MmGetPhysicalAddress(&sharedData->PdpEntries[pml4Index]).QuadPart;
+        sharedData->Pml4Entries[pml4Index].Present = 1;
+        sharedData->Pml4Entries[pml4Index].Write = 1;
+        sharedData->Pml4Entries[pml4Index].Supervisor = 1;
+        sharedData->Pml4Entries[pml4Index].PageFrameNumber = pdpBasePa >> PAGE_SHIFT;
 
-        for (ULONG64 pdIndex = 0; pdIndex < 512; pdIndex++)
+        for (ULONG64 pdpIndex = 0; pdpIndex < 512; pdpIndex++)
         {
-            constexpr ULONG64 pml4Index = 0;
-            const ULONG64 translationPa = ((pml4Index * 512 + pdpIndex) * 512) + pdIndex;
-            sharedData->PdeEntries[pdpIndex][pdIndex].Fields.PageFrameNumber = translationPa;
-            sharedData->PdeEntries[pdpIndex][pdIndex].Fields.Valid = 1;
-            sharedData->PdeEntries[pdpIndex][pdIndex].Fields.Write = 1;
-            sharedData->PdeEntries[pdpIndex][pdIndex].Fields.User = 1;
-            sharedData->PdeEntries[pdpIndex][pdIndex].Fields.LargePage = 1;
+            const ULONG64 translationPa = (pml4Index * 512ULL + pdpIndex);
+            sharedData->PdpEntries[pml4Index][pdpIndex].Present = 1;
+            sharedData->PdpEntries[pml4Index][pdpIndex].Write = 1;
+            sharedData->PdpEntries[pml4Index][pdpIndex].Supervisor = 1;
+            sharedData->PdpEntries[pml4Index][pdpIndex].LargePage = 1;
+            sharedData->PdpEntries[pml4Index][pdpIndex].PageFrameNumber = translationPa;
         }
     }
+}
+
+void SVM::ProtectSelf(PSHARED_VIRTUAL_PROCESSOR_DATA sharedData)
+{
+    static bool alreadyProtected = false;
+    if (alreadyProtected)
+        return;
+
+    alreadyProtected = true;
+
+    ULONG64 driverVirtualBase = 0;
+    SIZE_T driverSize = 0;
+    const NTSTATUS status = Utils::GetCurrentDriverInfo(&driverVirtualBase, &driverSize);
+    if (!NT_SUCCESS(status))
+        KeBugCheck(MEMORY1_INITIALIZATION_FAILED);
+
+    const ULONG64 driverPhysicalBase = MmGetPhysicalAddress(reinterpret_cast<PVOID>(driverVirtualBase)).QuadPart;
+    const ULONG64 driverPhysicalEnd = driverPhysicalBase + driverSize;
+    const ULONG64 blankPagePhysical = MmGetPhysicalAddress(Global::BlankPage).QuadPart;
+
+    bool found = false;
+    for (ULONG64 pml4Index = 0; pml4Index < 512; pml4Index++)
+    {
+        for (ULONG64 pdpIndex = 0; pdpIndex < 512; pdpIndex++)
+        {
+            const ULONG64 mappingBase = (pml4Index * 512ULL + pdpIndex) * PAGE_SIZE_1GB;
+            const ULONG64 mappingEnd = mappingBase + PAGE_SIZE_1GB;
+            if (driverPhysicalBase < mappingEnd && driverPhysicalEnd > mappingBase)
+            {
+                PD_ENTRY_2MB* newPdTable = reinterpret_cast<PD_ENTRY_2MB*>(Utils::GetPreallocatedPool(sizeof(PD_ENTRY_2MB) * 512));
+                for (ULONG64 pdIndex = 0; pdIndex < 512; pdIndex++)
+                {
+                    const ULONG64 pdMappingBase = mappingBase + pdIndex * PAGE_SIZE_2MB;
+                    const ULONG64 pdMappingEnd = pdMappingBase + PAGE_SIZE_2MB;
+                    if (driverPhysicalBase < pdMappingEnd && driverPhysicalEnd > pdMappingBase)
+                    {
+                        PT_ENTRY_4KB* newPtTable = reinterpret_cast<PT_ENTRY_4KB*>(Utils::GetPreallocatedPool(sizeof(PT_ENTRY_4KB) * 512));
+                        for (ULONG64 ptIndex = 0; ptIndex < 512; ptIndex++)
+                        {
+                            const ULONG64 pageMappingBase = pdMappingBase + ptIndex * PAGE_SIZE_4KB;
+                            newPtTable[ptIndex].Present = 1;
+                            newPtTable[ptIndex].Write = 1;
+                            newPtTable[ptIndex].Supervisor = 1;
+
+                            if (pageMappingBase >= driverPhysicalBase && pageMappingBase < driverPhysicalEnd)
+                            {
+                                newPtTable[ptIndex].PageFrameNumber = blankPagePhysical >> PAGE_SHIFT;
+                                found = true;
+                            }
+                            else
+                                newPtTable[ptIndex].PageFrameNumber = pageMappingBase >> PAGE_SHIFT;
+                        }
+
+                        PDE_4KB* newPdTableNarrow = reinterpret_cast<PDE_4KB*>(newPdTable);
+                        newPdTableNarrow[pdIndex].Present = 1;
+                        newPdTableNarrow[pdIndex].Write = 1;
+                        newPdTableNarrow[pdIndex].Supervisor = 1;
+                        newPdTableNarrow[pdIndex].LargePage = 0;
+
+                        const ULONG64 newPtTablePa = MmGetPhysicalAddress(newPtTable).QuadPart;
+                        newPdTableNarrow[pdIndex].PageFrameNumber = newPtTablePa >> PAGE_SHIFT;
+                    }
+                    else
+                    {
+                        newPdTable[pdIndex].Present = 1;
+                        newPdTable[pdIndex].Write = 1;
+                        newPdTable[pdIndex].Supervisor = 1;
+                        newPdTable[pdIndex].LargePage = 1;
+                        newPdTable[pdIndex].PageFrameNumber = pdMappingBase >> PD_PAGE_SHIFT;
+                    }
+                }
+
+                const ULONG64 newPdTablePa = MmGetPhysicalAddress(newPdTable).QuadPart;
+
+                PDPTE_2MB newEntry;
+                newEntry.AsUInt = sharedData->PdpEntries[pml4Index][pdpIndex].AsUInt;
+                newEntry.LargePage = 0;
+                newEntry.PageFrameNumber = newPdTablePa >> PAGE_SHIFT;
+
+                InterlockedExchange64(
+                    reinterpret_cast<volatile LONGLONG*>(&sharedData->PdpEntries[pml4Index][pdpIndex].AsUInt),
+                    static_cast<LONGLONG>(newEntry.AsUInt)
+                );
+            }
+        }
+    }
+
+    if (!found)
+        KeBugCheck(SECURITY1_INITIALIZATION_FAILED);
 }
 
 void SVM::BuildPermissionMap(const PVOID permissionMap)

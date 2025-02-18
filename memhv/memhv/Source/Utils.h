@@ -130,6 +130,7 @@ namespace Utils
     ULONG64 FindPatternImage(void* base, const char* pattern);
     PVOID AllocateContiguousMemory(SIZE_T size);
     NTSTATUS ExecuteOnEachProcessor(NTSTATUS(*callback)(PVOID), PVOID context);
+    NTSTATUS GetCurrentDriverInfo(ULONG64* baseAddress, SIZE_T* size);
     PVOID AllocatePageAligned(SIZE_T size);
     PEPROCESS GetNextProcess(PEPROCESS input);
     PEPROCESS FindProcess(HANDLE processId);
@@ -137,4 +138,7 @@ namespace Utils
     bool ValidUsermodeAddress(ULONG64 address);
     void ReferenceObject(PVOID object);
     void DereferenceObject(PVOID object);
+
+    const SIZE_T PreallocatedPoolSize = 0x1000;
+    PVOID GetPreallocatedPool(SIZE_T poolIndex);
 }

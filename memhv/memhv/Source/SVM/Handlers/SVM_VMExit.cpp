@@ -18,7 +18,7 @@ void SVM::InjectGeneralProtectionException(const PVIRTUAL_PROCESSOR_DATA vpData)
     event.Fields.Vector = EXCEPTION_VECTOR_UNDEFINED_OPCODE;
     event.Fields.Type = INTERRUPT_TYPE_HARDWARE_EXCEPTION;
     event.Fields.ErrorCodeValid = 0;
-    event.Fields.Valid = 1;
+    event.Fields.Present = 1;
     vpData->GuestVmcb.ControlArea.EventInj = event.AsUInt64;
 }
 
@@ -30,7 +30,7 @@ void SVM::InjectPageFaultException(const PVIRTUAL_PROCESSOR_DATA vpData, const U
     event.Fields.Vector = EXCEPTION_VECTOR_PAGE_FAULT;
     event.Fields.Type = INTERRUPT_TYPE_HARDWARE_EXCEPTION;
     event.Fields.ErrorCodeValid = 1;
-    event.Fields.Valid = 1;
+    event.Fields.Present = 1;
 
     PAGE_FAULT_EXCEPTION errorCode;
     errorCode.AsUInt = 0;
@@ -75,7 +75,7 @@ EXTERN_C bool SVM::HandleExit(PVIRTUAL_PROCESSOR_DATA vpData, const PGUEST_REGIS
         HandleVMCall(vpData, &guestContext);
         break;
     default:
-        KeBugCheckEx(INVALID_DRIVER_HANDLE, IsInUserland(vpData), vpData->GuestVmcb.StateSaveArea.Rip, vpData->GuestVmcb.ControlArea.ExitCode, 0);
+        KeBugCheckEx(INVALID_DRIVER_HANDLE, IsInUserland(vpData), vpData->GuestVmcb.StateSaveArea.Rip, vpData->GuestVmcb.ControlArea.ExitCode, vpData->GuestVmcb.ControlArea.ExitInfo1);
     }
 
     if (guestContext.ExitVm)

@@ -7,6 +7,7 @@ namespace SVM
 
     NTSTATUS CheckSupport();
     void BuildNestedPageTables(PSHARED_VIRTUAL_PROCESSOR_DATA sharedData);
+    void ProtectSelf(PSHARED_VIRTUAL_PROCESSOR_DATA sharedData);
     void BuildPermissionMap(PVOID permissionMap);
     bool CheckAndSetInstalled();
     UINT16 GetSegmentAccessRights(UINT16 segmentSelector, ULONG_PTR gdtBase);

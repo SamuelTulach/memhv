@@ -20,3 +20,14 @@
 #include "SVM/Defines/SVM_ProcessorData.h"
 #include "SVM/SVM.h"
 #include "SVM/Handlers/SVM_VMExit.h"
+
+namespace Global
+{
+    inline PVOID BlankPage = nullptr;
+    inline PVOID PreallocatedPools[32];
+
+    namespace Offsets
+    {
+        inline ULONG64 ActiveProcessLinks = 0x448;
+    }
+}

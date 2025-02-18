@@ -4,7 +4,10 @@
 #define PD_PAGE_SHIFT                                               21
 #define PML4_PAGE_SHIFT                                             39
 #define PDP_PAGE_SHIFT                                              30
+
+#define PAGE_SIZE_4KB                                               0x1000
 #define PAGE_SIZE_2MB                                               0x200000
+#define PAGE_SIZE_1GB                                               0x40000000
 
 #define IA32_APIC_BASE                                              0x0000001b
 #define IA32_MSR_PAT                                                0x00000277

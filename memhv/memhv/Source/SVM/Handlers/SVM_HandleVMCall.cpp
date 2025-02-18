@@ -72,6 +72,18 @@ void HandleCopyProcessMemory(const SVM::PVIRTUAL_PROCESSOR_DATA vpData, const SV
     guestContext->VpRegs->Rax = Shared::ErrorCodes::Success;
 }
 
+void HandleProtectSelf(const SVM::PVIRTUAL_PROCESSOR_DATA vpData, const SVM::PGUEST_CONTEXT guestContext)
+{
+    UNREFERENCED_PARAMETER(vpData);
+
+    SVM::ProtectSelf(vpData->HostStackLayout.SharedVpData);
+
+    vpData->GuestVmcb.ControlArea.VmcbClean &= 0xFFFFFFEF;
+    vpData->GuestVmcb.ControlArea.TlbControl = 1;
+
+    guestContext->VpRegs->Rax = Shared::ErrorCodes::Success;
+}
+
 void SVM::HandleVMCall(const PVIRTUAL_PROCESSOR_DATA vpData, const PGUEST_CONTEXT guestContext)
 {
     const ULONG64 magic = guestContext->VpRegs->Rcx;
@@ -91,6 +103,9 @@ void SVM::HandleVMCall(const PVIRTUAL_PROCESSOR_DATA vpData, const PGUEST_CONTEX
             break;
         case Shared::CopyProcessMemory:
             HandleCopyProcessMemory(vpData, guestContext);
+            break;
+        case Shared::ProtectSelf:
+            HandleProtectSelf(vpData, guestContext);
             break;
         default:
             HandleInvalid(vpData, guestContext);

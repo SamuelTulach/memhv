@@ -3,6 +3,8 @@
 #include <winternl.h>
 #include <iostream>
 #include <chrono>
+#include <mutex>
+
 #include "../Library/memhv.h"
 
 typedef enum _MEMORY_INFORMATION_CLASS
@@ -130,8 +132,17 @@ int main()
         return EXIT_FAILURE;
     }
 
+    printf("[>] Instructing hypervisor to protect itself...\n");
+    status = HV::Protect();
+    if (!status)
+    {
+        printf("[!] Hypervisor self-protection failed\n");
+        getchar();
+        return EXIT_FAILURE;
+    }
+
     printf("[>] Searching for target process...\n");
-    UINT32 targetProcessId = LookupProcessId(L"ProcessHacker.exe");
+    UINT32 targetProcessId = LookupProcessId(L"SystemInformer.exe");
     if (!targetProcessId)
     {
         printf("[!] Process not found\n");
@@ -154,7 +165,7 @@ int main()
     printf("[+] Target process: EPROCESS -> 0x%llx CR3 -> 0x%llx\n", HV::Data::TargetEPROCESS, HV::Data::TargetDirectoryBase);
 
     printf("[>] Getting module base address...\n");
-    MainModule = GetModule(targetProcessId, L"ProcessHacker.exe");
+    MainModule = GetModule(targetProcessId, L"SystemInformer.exe");
     if (!MainModule)
     {
         printf("[!] Failed to get module base address\n");

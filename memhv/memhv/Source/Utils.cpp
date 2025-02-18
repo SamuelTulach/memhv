@@ -113,7 +113,7 @@ PVOID Utils::AllocateContiguousMemory(const SIZE_T size)
     boundary.QuadPart = lowest.QuadPart = 0;
     highest.QuadPart = -1;
 
-    const PVOID allocated = MmAllocateContiguousMemorySpecifyCacheNode(size, lowest, highest, boundary, MmCached, MM_ANY_NODE_OK);
+    const PVOID allocated = MmAllocateContiguousMemorySpecifyCacheNode(size, lowest, highest, boundary, MmNonCached, MM_ANY_NODE_OK);
     if (!allocated)
         KeBugCheck(HAL_MEMORY_ALLOCATION);
 
@@ -151,12 +151,28 @@ NTSTATUS Utils::ExecuteOnEachProcessor(NTSTATUS(*callback)(PVOID), const PVOID c
     return STATUS_SUCCESS;
 }
 
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+NTSTATUS Utils::GetCurrentDriverInfo(ULONG64* baseAddress, SIZE_T* size)
+{
+    if (__ImageBase.e_magic != IMAGE_DOS_SIGNATURE)
+        return STATUS_INVALID_IMAGE_FORMAT;
+
+    const PIMAGE_NT_HEADERS64 headers = reinterpret_cast<PIMAGE_NT_HEADERS64>(reinterpret_cast<ULONG64>(&__ImageBase) + __ImageBase.e_lfanew);
+    if (headers->Signature != IMAGE_NT_SIGNATURE)
+        return STATUS_INVALID_IMAGE_FORMAT;
+
+    *size = headers->OptionalHeader.SizeOfImage;
+    *baseAddress = reinterpret_cast<ULONG64>(&__ImageBase);
+
+    return STATUS_SUCCESS;
+}
+
 PVOID Utils::AllocatePageAligned(const SIZE_T size)
 {
     if (size < PAGE_SIZE)
         KeBugCheck(HAL_MEMORY_ALLOCATION);
 
-    const PVOID allocated = ExAllocatePool(NonPagedPool, size);
+    const PVOID allocated = AllocateContiguousMemory(size);
     if (!allocated)
         KeBugCheck(HAL_MEMORY_ALLOCATION);
 
@@ -167,10 +183,9 @@ PVOID Utils::AllocatePageAligned(const SIZE_T size)
 
 PEPROCESS Utils::GetNextProcess(PEPROCESS input)
 {
-    constexpr ULONG64 activeProcessLinks = 0x448;
-    const PLIST_ENTRY currentListEntry = reinterpret_cast<PLIST_ENTRY>(reinterpret_cast<ULONG64>(input) + activeProcessLinks);
+    const PLIST_ENTRY currentListEntry = reinterpret_cast<PLIST_ENTRY>(reinterpret_cast<ULONG64>(input) + Global::Offsets::ActiveProcessLinks);
     PLIST_ENTRY nextListEntry = currentListEntry->Flink;
-    return reinterpret_cast<PEPROCESS>(reinterpret_cast<ULONG64>(nextListEntry) - activeProcessLinks);
+    return reinterpret_cast<PEPROCESS>(reinterpret_cast<ULONG64>(nextListEntry) - Global::Offsets::ActiveProcessLinks);
 }
 
 PEPROCESS Utils::FindProcess(const HANDLE processId)
@@ -212,4 +227,21 @@ void Utils::ReferenceObject(PVOID object)
 void Utils::DereferenceObject(PVOID object)
 {
     _InterlockedExchangeAdd64(static_cast<volatile LONG64*>(object) - 6, -1);
+}
+
+PVOID Utils::GetPreallocatedPool(SIZE_T size)
+{
+    if (size > PreallocatedPoolSize)
+        KeBugCheck(BAD_EXHANDLE);
+
+    static SIZE_T currentPoolIndex = 0;
+    if (currentPoolIndex >= ARRAYSIZE(Global::PreallocatedPools))
+        KeBugCheck(BAD_EXHANDLE);
+
+    const PVOID pool = Global::PreallocatedPools[currentPoolIndex];
+    currentPoolIndex++;
+
+    RtlZeroMemory(pool, size);
+
+    return pool;
 }

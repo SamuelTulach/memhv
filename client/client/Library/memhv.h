@@ -26,6 +26,7 @@ namespace HV
             GetProcess,
             GetDirectoryBase,
             CopyProcessMemory,
+            ProtectSelf,
         };
 
         enum ErrorCodes
@@ -76,7 +77,7 @@ namespace HV
         }
 
         typedef ULONG64(__stdcall* CallFunc)(ULONG64 arg1, ULONG64 arg2, ULONG64 arg3, ULONG64 arg4);
-        CallFunc func = static_cast<CallFunc>(Data::Shellcode);
+        const CallFunc func = static_cast<CallFunc>(Data::Shellcode);
 
         ULONG64 output;
         __try
@@ -108,8 +109,14 @@ namespace HV
 
     inline bool CheckPresence()
     {
-        ULONG64 output = CallVM(Shared::MAGIC, Shared::CommandId::CheckPresence);
+        const ULONG64 output = CallVM(Shared::MAGIC, Shared::CommandId::CheckPresence);
         return output == Shared::COMM_CHECK;
+    }
+
+    inline bool Protect()
+    {
+        const ULONG64 output = CallVM(Shared::MAGIC, Shared::CommandId::ProtectSelf);
+        return output == Shared::ErrorCodes::Success;
     }
 
     inline ULONG64 GetEPROCESS(UINT32 processId)
@@ -157,7 +164,7 @@ namespace HV
         data.DestinationAddress = targetAddress;
         data.NumberOfBytes = bytes;
 
-        ULONG64 value = CallVM(Shared::MAGIC, Shared::CommandId::CopyProcessMemory, reinterpret_cast<ULONG64>(&data), Data::CurrentDirectoryBase);
+        const ULONG64 value = CallVM(Shared::MAGIC, Shared::CommandId::CopyProcessMemory, reinterpret_cast<ULONG64>(&data), Data::CurrentDirectoryBase);
         return value == Shared::ErrorCodes::Success;
     }
 

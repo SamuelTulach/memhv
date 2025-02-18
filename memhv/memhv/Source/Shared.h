@@ -14,6 +14,7 @@ namespace Shared
         GetProcess,
         GetDirectoryBase,
         CopyProcessMemory,
+        ProtectSelf,
     };
 
     enum ErrorCodes
