@@ -202,7 +202,7 @@ PEPROCESS Utils::FindProcess(const HANDLE processId)
 
 bool Utils::CheckMSR(UINT32 msr)
 {
-    if (((msr > 0) && (msr < 0x00001FFF)) || ((msr > 0xC0000000) && (msr < 0xC0001FFF)) || (msr > 0xC0010000) && (msr < 0xC0011FFF))
+    if (((msr > 0) && (msr < 0x00001FFF)) || ((msr > 0xC0000000) && (msr < 0xC0002FFF)) || (msr > 0xC0010000) && (msr < 0xC0011FFF))
         return true;
 
     return false;
