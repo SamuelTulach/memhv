@@ -20,27 +20,57 @@ ULONG64 Memory::PhysicalToVirtual(const ULONG64 physicalAddress)
     return reinterpret_cast<ULONG64>(MmGetVirtualForPhysical(physical));
 }
 
-ULONG64 Memory::ResolveProcessPhysicalAddress(const UINT32 pageIndex, const ULONG64 directoryBase, const ULONG64 virtualAddress)
-{
-    UNREFERENCED_PARAMETER(pageIndex);
-
-    const ULONG64 original = __readcr3();
-    __writecr3(directoryBase);
-
-    ULONG64 result = VirtualToPhysical(virtualAddress);
-
-    __writecr3(original);
-
-    return result;
-}
-
-Memory::PTE* Memory::GetPte(const ULONG64 address)
+ULONG64 Memory::ResolveProcessPhysicalAddress(const UINT32 pageIndex, const ULONG64 directoryBase, const ULONG64 address)
 {
     VIRTUAL_ADDRESS virtualAddress;
     virtualAddress.Value = address;
 
     PTE_CR3 cr3;
-    cr3.Value = __readcr3();
+    cr3.Value = directoryBase;
+
+    PML4E pml4e;
+    ULONG64 pml4eAddress = PFN_TO_PAGE(cr3.Pml4) + virtualAddress.Pml4Index * sizeof(PML4E);
+    ReadPhysicalAddress(pageIndex, pml4eAddress, &pml4e, sizeof(PML4E));
+    if (!pml4e.Present)
+        return 0;
+
+    PDPTE pdpte;
+    ULONG64 pdpteAddress = PFN_TO_PAGE(pml4e.Pdpt) + virtualAddress.PdptIndex * sizeof(PDPTE);
+    ReadPhysicalAddress(pageIndex, pdpteAddress, &pdpte, sizeof(PDPTE));
+    if (!pdpte.Present)
+        return 0;
+
+    // If 1GB page
+    if (pdpte.PageSize)
+        return PFN_TO_PAGE(pdpte.Pd) + virtualAddress.Offset1gb;
+
+    PDE pde;
+    ULONG64 pdeAddress = PFN_TO_PAGE(pdpte.Pd) + virtualAddress.PdIndex * sizeof(PDE);
+    ReadPhysicalAddress(pageIndex, pdeAddress, &pde, sizeof(PDE));
+    if (!pde.Present)
+        return 0;
+
+    // If 2MB page
+    if (pde.PageSize)
+        return PFN_TO_PAGE(pde.Pt) + virtualAddress.Offset2mb;
+
+    PTE pte;
+    ULONG64 pteAddress = PFN_TO_PAGE(pde.Pt) + virtualAddress.PtIndex * sizeof(PTE);
+    ReadPhysicalAddress(pageIndex, pteAddress, &pte, sizeof(PTE));
+    if (!pte.Present)
+        return 0;
+
+    return PFN_TO_PAGE(pte.PageFrame) + virtualAddress.Offset4kb;
+}
+
+
+Memory::PTE* Memory::GetPte(const ULONG64 address, const ULONG64 directoryBase)
+{
+    VIRTUAL_ADDRESS virtualAddress;
+    virtualAddress.Value = address;
+
+    PTE_CR3 cr3;
+    cr3.Value = directoryBase;
 
     PML4E* pml4 = reinterpret_cast<PML4E*>(PhysicalToVirtual(PFN_TO_PAGE(cr3.Pml4)));
     const PML4E* pml4e = (pml4 + virtualAddress.Pml4Index);
@@ -86,7 +116,7 @@ bool Memory::PreparePage(PAGE_INFO* targetPage)
     if (!targetPage->CopyBuffer)
         return false;
 
-    targetPage->PageEntry = GetPte(reinterpret_cast<ULONG64>(targetPage->VirtualAddress));
+    targetPage->PageEntry = GetPte(reinterpret_cast<ULONG64>(targetPage->VirtualAddress), __readcr3());
     if (!targetPage->PageEntry)
         return false;
 
@@ -119,9 +149,9 @@ PVOID Memory::OverwritePage(const UINT32 pageIndex, const ULONG64 physicalAddres
 
 void Memory::RestorePage(const UINT32 pageIndex)
 {
-    const PAGE_INFO* pageInfo = &PageList[pageIndex];
-    pageInfo->PageEntry->PageFrame = pageInfo->PreviousPageFrame;
-    __invlpg(pageInfo->VirtualAddress);
+	const PAGE_INFO* pageInfo = &PageList[pageIndex];
+	pageInfo->PageEntry->PageFrame = pageInfo->PreviousPageFrame;
+	__invlpg(pageInfo->VirtualAddress);
 }
 
 void Memory::ReadPhysicalAddress(const UINT32 pageIndex, const ULONG64 targetAddress, const PVOID buffer, const SIZE_T size)
